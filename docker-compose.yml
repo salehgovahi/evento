@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgresdb:
+    image: postgres
+    container_name: postgresdb-webproject
+    restart: always
+    stdin_open: true
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DATABASE_NAME}
+      - POSTGRES_USER=${DATABASE_USER}
+      - PGDATA=/data/postgres  
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - "5434:5432"
+    networks:
+      - webproject-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: always
+    ports:
+      - "8891:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=pgadmin@pgadmin.com
+      - PGADMIN_DEFAULT_PASSWORD=password
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    networks:
+      - webproject-network   
+      
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-webproject
+    ports:
+      - 5673:5672
+      - 15673:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
+      - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+    networks:
+      - webproject-network
+    restart: unless-stopped
+
+networks:
+  webproject-network:
+    driver: bridge
+
+volumes:
+  postgres:
+  pgadmin:
+  mongodb_data_volume:
+  rabbitmq_data:

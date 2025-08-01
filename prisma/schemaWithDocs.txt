@@ -1,0 +1,313 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model verifications { 
+  // Table for saving verification codes that send to user at first of login/signup and its related information
+
+  id                String   @id @unique @default(uuid()) @db.Uuid
+  phone_number      String   @db.VarChar(30)
+  verification_code Int      @unique
+  created_at        DateTime @default(now())
+  is_active         Boolean  @default(true)   // Will be set false when expired or used
+}
+
+model forget_password {
+  // Table for saving verification codes that send to user to change password
+
+  id                String   @id @unique @default(uuid()) @db.Uuid
+  phone_number      String
+  verification_code Int      @unique         // Verification code using when we want to verify user to change password
+  created_at        DateTime @default(now())
+  expired_at        DateTime
+  time_to_change    DateTime                 // Time that user has to change password and after that code will be expired
+  is_used           Boolean  @default(false)
+}
+
+model wrong_password_login {
+  // Table for saving records when user entered wrong password
+
+  id           String   @id @unique @default(uuid()) @db.Uuid
+  phone_number String
+  created_at   DateTime @default(now())
+}
+
+model wrong_verification_code_records {
+  // Table for saving records when user entered wrong verification code
+
+  id           String   @id @unique @default(uuid()) @db.Uuid
+  phone_number String
+  created_at   DateTime @default(now())
+}
+
+model user {
+  // Base table of users that has relations to other tables that are important to save user information
+
+  id           String         @id @unique @default(uuid()) @db.Uuid
+  phone_number String         @unique @db.VarChar(20)
+  password     String?        @db.VarChar(110)
+  user_roles   user_role[]                    // Relation to roles table to assign user a role
+  user_info    user_info?                     // Relation to user_info table to save user's personal information
+  course_user  course_user[]                  // Relation to user_course table to have information of user in a course
+  teacher_info teacher_info[]                 // Relation to teacher_info table to have information of teachers in a course
+  is_deleted   Boolean        @default(false)
+}
+
+model user_info {
+  // Table for saving personal information of a user
+
+  id                String   @id @unique @default(uuid()) @db.Uuid
+  user              user     @relation(fields: [user_id], references: [id])
+  user_id           String   @unique @db.Uuid
+  phone_number      String   @unique @db.VarChar(20)
+  name              String?
+  family            String?
+  birth_date        String?
+  national_id       String?
+  gender            String?
+  // email             String?
+  school_name       String?
+  school_level      Int?
+  motivation_letter String?
+  image             String?
+  created_at        DateTime @default(now())
+  is_deleted        Boolean  @default(false)
+}
+
+model teacher_info {
+  // Table for saving general information of a teacher
+  
+  id               String   @id @unique @default(uuid()) @db.Uuid
+  user             user?    @relation(fields: [user_id], references: [id])
+  user_id          String   @unique @db.Uuid
+  position         String
+  description      String
+  linkedin_account String?
+  created_at       DateTime @default(now())
+  is_deleted       Boolean  @default(false)
+}
+
+model banned_users {
+  // Table for saving banned users information
+
+  id           String   @id @unique @default(uuid()) @db.Uuid
+  phone_number String
+  reason       String
+  created_at   DateTime @default(now())
+  expired_at   DateTime
+  is_active    Boolean  @default(true)
+}
+
+model user_role {
+  // Junction table for relation between user and role tables
+
+  id      String @id @unique @default(uuid()) @db.Uuid
+  user    user   @relation(fields: [user_id], references: [id])  // Relation to user table (user_id => user.id)
+  user_id String @db.Uuid
+  roles   roles  @relation(fields: [role_id], references: [id])  // Relation to roles table (role_id => roles.id)
+  role_id String @db.Uuid
+}
+
+model roles {
+  // Table for saving information of roles
+
+  id          String        @id @unique @default(uuid()) @db.Uuid
+  name        String        @unique @db.VarChar(20)
+  user_roles  user_role[]                                       // Relation to user_roles table to assign user a role
+  role_access role_access[]                                     // Relation to role_access table to assign accesses to a role
+  is_deleted  Boolean       @default(false)
+}
+
+model role_access {
+  // Junction table for relation between access and role tables
+
+  id        String   @id @unique @default(uuid()) @db.Uuid
+  role      roles    @relation(fields: [role_id], references: [id])    // Relation to roles table (role_id => roles.id)
+  role_id   String   @db.Uuid
+  access    accesses @relation(fields: [access_id], references: [id])  // Relation to accesses table (access_id => accesses.id)
+  access_id String   @db.Uuid
+}
+
+model accesses {
+  // Table for saving accesses information
+
+  id          String        @id @unique @default(uuid()) @db.Uuid
+  name        String
+  path        String                        // Url of access
+  method      String                        // Method of request to access's url
+  is_deleted  Boolean       @default(false)
+  role_access role_access[]                 // Relation to role_access table to assign accesses to a role
+}
+
+model roadmaps {
+  // Table for saving roadmaps information
+
+  id             String           @id @unique @default(uuid()) @db.Uuid
+  title          String           @unique @db.VarChar(50)
+  course_count   Int              @default(0)
+  color          String
+  icon           String
+  roadmap_course roadmap_course[]          // Relation to roadmap_course table to add a course to roadmap
+  is_deleted     Boolean          @default(false)
+}
+
+model roadmap_course {
+  // Junction table for relation between courses and roadmaps tables
+
+  id         String   @id @unique @default(uuid()) @db.Uuid
+  roadmap_id String   @db.Uuid
+  roadmaps   roadmaps @relation(fields: [roadmap_id], references: [id])   // Relation to roadmaps table (roadmap_id => roadmaps.id)
+  course_id  String   @db.Uuid
+  courses    courses  @relation(fields: [course_id], references: [id])    // Relation to courses table (course_id => courses.id)
+}
+
+model courses {
+  // Base table of courses that has relations to other tables that are important to save a course information
+
+  id                String             @id @unique @default(uuid()) @db.Uuid
+  statistics_id     String             @db.Uuid                                                // Id of related row in course_statistics table
+  course_statistics course_statistics  @relation(fields: [statistics_id], references: [id])    // Relation to course_statistics table to save course statistics information
+  content_id        String             @db.Uuid                                                // Id of related row in course_content table
+  course_content    course_content     @relation(fields: [content_id], references: [id])       // Relation to course_content table to save content of a course
+  roadmap_course    roadmap_course[]                                                           // Relation to roadmap_course table to add course to roadmap
+  course_user       course_user[]                                                              // Relation to course_user table to save information of users in a course
+  course_comment    course_comment[]                                                           // Relation to course_user table to save comments of a course
+  course_organizer  course_organizer[]                                                         // Relation to course_user table to save organizers information of a course
+  is_deleted        Boolean            @default(false)
+  chapters          chapters[]                                                                 // Relation to chapters table to add chapter to a course
+}
+
+model course_user {
+  // Junction table for relation between courses and user tables
+
+  id        String  @id @unique @default(uuid()) @db.Uuid
+  course    courses @relation(fields: [course_id], references: [id])     // Relation to courses table (course_id => courses.id)
+  course_id String  @db.Uuid
+  user      user    @relation(fields: [user_id], references: [id])       // Relation to user table (user_id => user.id)
+  user_id   String  @db.Uuid
+  role      String  @db.VarChar(20)                                      // Role of a user in a course (teacher or student)
+}
+
+model course_content {
+  // Table for saving content of a course
+
+  id                  String    @id @unique @default(uuid()) @db.Uuid
+  name                String    @unique @db.VarChar(50)
+  level               String    @db.VarChar(50)
+  image               String?
+  introduction        String?
+  advertisement_video String?
+  learning_topics     String?   // آنجه می آموزید
+  learning_skills     String?   // مهارت هایی که یاد میگیرید
+  contacts            String?   // مخاطبین دوره
+  requirements        String?   // پیش نیاز ها
+  description         String?
+  faqs                String?   // سوالات متداول
+  course              courses[] 
+}
+
+model course_statistics {
+  // Table for saving statistics of a course
+
+  id               String    @id @unique @default(uuid()) @db.Uuid
+  rate             Float     @default(0)
+  rate_count       Int       @default(0)
+  student_count    Int       @default(0)
+  chapter_count    Int       @default(0)
+  comment_count    Int       @default(0)
+  unit_count       Int       @default(0)
+  capacity         Int
+  recommended_time Int
+  length_time      Int?
+  courses          courses[]
+}
+
+model course_organizer {
+  // Junction table for relation between courses and organizer tables
+
+  id           String     @id @unique @default(uuid()) @db.Uuid
+  course       courses    @relation(fields: [course_id], references: [id])
+  course_id    String     @db.Uuid
+  organizer    organizers @relation(fields: [organizer_id], references: [id])
+  organizer_id String     @db.Uuid
+}
+
+model organizers {
+  // Table for saving organizers information of a course
+
+  id                 String             @id @unique @default(uuid()) @db.Uuid
+  name               String             @unique
+  logo               String?
+  is_deleted         Boolean            @default(false)
+  organizers_courses course_organizer[]
+}
+
+model chapters {
+  // Table for saving chapters information of a course
+
+  id              String  @id @unique @default(uuid()) @db.Uuid
+  course_id       String  @db.Uuid
+  title           String  @db.VarChar(20)
+  is_deleted      Boolean @default(false)
+  index_in_course Int
+  courses         courses @relation(fields: [course_id], references: [id])
+  units           units[]
+}
+
+model units {
+  // Table for saving units information of a chapter
+
+  id               String   @id @unique @default(uuid()) @db.Uuid
+  chapter_id       String   @db.Uuid
+  title            String
+  type             String
+  content          String
+  video            String
+  video_length     Int
+  is_deleted       Boolean  @default(false)
+  index_in_chapter Int
+  chapters         chapters @relation(fields: [chapter_id], references: [id])
+}
+
+model certificates {
+  // Table for save certificates of users
+  id            String  @id @unique @default(uuid()) @db.Uuid
+  user_id       String  @db.Uuid
+  user          user    @relation(fields: [user_id], references: [id])
+  course_id     String  @db.Uuid
+  courses       courses @relation(fields: [course_id], references: [id])
+  file          String
+  validate_link String?
+  is_deleted    Boolean @default(false)
+}
+
+model provinces {
+  // Table for save provinces in Iran
+  id            String   @id @unique @default(uuid()) @db.Uuid
+  province_name String
+  cities        cities[]
+}
+
+model cities {
+  // Table for save cities in Iran
+  id            String    @id @unique @default(uuid()) @db.Uuid
+  province_id   String    @db.Uuid
+  province_name String
+  city_name     String
+  provinces     provinces @relation(fields: [province_id], references: [id])
+}
+
+model contact_us {
+  // Table for save information of contact user to us
+  id           String  @id @unique @default(uuid()) @db.Uuid
+  phone_number String?
+  email        String?
+  name         String?
+  family       String?
+  context      String?
+}

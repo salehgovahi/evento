@@ -1,0 +1,306 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model wrong_verification_code_records {
+  id         String   @id @unique @default(uuid()) @db.Uuid
+  email      String
+  created_at DateTime @default(now())
+}
+
+model verifications {
+  id                String   @id @unique @default(uuid()) @db.Uuid
+  email             String   @db.VarChar(30)
+  verification_code Int      @unique
+  created_at        DateTime @default(now())
+  is_active         Boolean  @default(true)
+}
+
+model user {
+  id                      String                    @id @unique @default(uuid()) @db.Uuid
+  email                   String                    @unique
+  name                    String?
+  family                  String?
+  birth_date              String?
+  gender                  String?
+  national_id             String?
+  password                String?
+  image                   String?
+  is_deleted              Boolean                   @default(false)
+  user_roles              user_role[]
+  event_participants      event_participants[]
+  comments                comments[]
+  contact_us              contact_us[]
+  notification_recipients notification_recipients[]
+  event_feedbacks         event_feedbacks[]
+}
+
+model banned_users {
+  id         String   @id @unique @default(uuid()) @db.Uuid
+  created_at DateTime @default(now())
+  expired_at DateTime
+  email      String
+  reason     String
+  is_active  Boolean  @default(true)
+}
+
+model user_role {
+  id         String  @id @unique @default(uuid()) @db.Uuid
+  user_id    String  @db.Uuid
+  role_id    String  @db.Uuid
+  is_deleted Boolean @default(false)
+  roles      roles   @relation(fields: [role_id], references: [id])
+  user       user    @relation(fields: [user_id], references: [id])
+}
+
+model roles {
+  id                     String                   @id @unique @default(uuid()) @db.Uuid
+  is_deleted             Boolean                  @default(false)
+  name                   String                   @unique @db.VarChar(20)
+  role_access            role_access[]
+  user_roles             user_role[]
+  notification_audiences notification_audiences[]
+}
+
+model role_access {
+  id        String   @id @unique @default(uuid()) @db.Uuid
+  role_id   String   @db.Uuid
+  access_id String   @db.Uuid
+  access    accesses @relation(fields: [access_id], references: [id])
+  role      roles    @relation(fields: [role_id], references: [id])
+}
+
+model accesses {
+  id          String        @id @unique @default(uuid()) @db.Uuid
+  path        String
+  method      String
+  name        String
+  is_deleted  Boolean       @default(false)
+  role_access role_access[]
+}
+
+model contact_us {
+  id          String    @id @unique @default(uuid()) @db.Uuid
+  email       String?
+  name        String?
+  context     String?
+  category    String?
+  title       String?
+  answer      String?
+  answered_by String?   @db.Uuid
+  answered_at DateTime?
+  created_at  DateTime  @default(now())
+  answered    user?     @relation(fields: [answered_by], references: [id])
+}
+
+model events {
+  id                 String               @id @unique @default(uuid()) @db.Uuid
+  title              String
+  type               String
+  image              String?
+  video              String?
+  introduction       String?
+  description        String?
+  features           Json?
+  organizers         organizers[]
+  start_registration DateTime?
+  end_registration   DateTime?
+  start_time         DateTime?
+  end_time           DateTime?
+  latitude           Float?
+  longitude          Float?
+  link               String?
+  capacity           Int?
+  is_deleted         Boolean              @default(false)
+  created_at         DateTime             @default(now())
+  related_files      event_files[]
+  event_participants event_participants[]
+  event_speakers     event_speakers[]
+  event_feedbacks    event_feedbacks[]
+}
+
+model event_feedbacks {
+  id           String   @id @unique @default(uuid()) @db.Uuid
+  event_id     String   @db.Uuid
+  user_id      String   @db.Uuid
+  context      String
+  rate         Int
+  is_confirmed Boolean? @default(false)
+  is_deleted   Boolean? @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  user         user     @relation(fields: [user_id], references: [id])
+  events       events   @relation(fields: [event_id], references: [id])
+}
+
+model event_files {
+  id         String   @id @unique @default(uuid()) @db.Uuid
+  event_id   String   @db.Uuid
+  url        String
+  name       String?
+  type       String?
+  created_at DateTime @default(now())
+  is_deleted Boolean  @default(false)
+  events     events   @relation(fields: [event_id], references: [id])
+}
+
+model organizers {
+  id                String   @id @unique @default(uuid()) @db.Uuid
+  name              String
+  logo              String?
+  is_deleted        Boolean  @default(false)
+  created_at        DateTime @default(now())
+  events_organizers events[]
+}
+
+model event_speakers {
+  id               String   @id @unique @default(uuid()) @db.Uuid
+  event_id         String   @db.Uuid
+  name             String
+  family           String
+  position         String?
+  linkedin_address String?
+  image            String?
+  related_session  String?  @db.Uuid
+  created_at       DateTime @default(now())
+  is_deleted       Boolean  @default(false)
+  events           events   @relation(fields: [event_id], references: [id])
+}
+
+model event_participants {
+  id                 String   @id @unique @default(uuid()) @db.Uuid
+  event_id           String   @db.Uuid
+  user_id            String   @db.Uuid
+  email              String
+  phone_number       String?  @db.VarChar(20)
+  name               String?
+  family             String?
+  birth_date         String?
+  gender             String?
+  national_id        String?
+  ticket             String?
+  serial             String?
+  certificate        String?
+  signup_request     Json?
+  completed_register Boolean  @default(false)
+  created_at         DateTime @default(now())
+  is_deleted         Boolean  @default(false)
+  events             events   @relation(fields: [event_id], references: [id])
+  participants       user     @relation(fields: [user_id], references: [id])
+}
+
+model event_sessions {
+  id           String    @id @unique @default(uuid()) @db.Uuid
+  event_id     String    @db.Uuid
+  title        String?
+  description  String?
+  type         String?
+  start_date   DateTime?
+  end_date     DateTime?
+  related_link String?
+  image        String?
+  created_at   DateTime  @default(now())
+  is_deleted   Boolean   @default(false)
+}
+
+model comments {
+  id                String     @id @unique @default(uuid()) @db.Uuid
+  related_section   String     @db.Uuid
+  writer_id         String     @db.Uuid
+  parent_comment_id String?    @db.Uuid
+  is_parent         Boolean    @default(false)
+  context           String
+  created_at        DateTime   @default(now())
+  like_count        Int        @default(0)
+  attached_file     String?
+  is_deleted        Boolean    @default(false)
+  parent_comment    comments?  @relation("comment_replies", fields: [parent_comment_id], references: [id])
+  replies           comments[] @relation("comment_replies")
+  writer            user?      @relation(fields: [writer_id], references: [id])
+}
+
+model comments_likes {
+  id         String @id @unique @default(uuid()) @db.Uuid
+  comment_id String @db.Uuid
+  user_id    String @db.Uuid
+}
+
+model notifications {
+  id          String                    @id @default(uuid()) @db.Uuid
+  type        String                    @default("PERSONAL") // AUDIENCE or PERSONAL
+  template_id String?                   @db.Uuid
+  template    notification_templates?   @relation(fields: [template_id], references: [id])
+  meta        Json?
+  created_at  DateTime                  @default(now())
+  recipients  notification_recipients[]
+  audiences   notification_audiences[]
+}
+
+model notification_templates {
+  id            String          @id @default(uuid()) @db.Uuid
+  code          String          @unique
+  title         String
+  body          String
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+  updated_by    String          @db.Uuid
+  notifications notifications[]
+}
+
+model notification_audiences {
+  id              String        @id @default(uuid()) @db.Uuid
+  notification    notifications @relation(fields: [notification_id], references: [id])
+  notification_id String        @db.Uuid
+  role            roles         @relation(fields: [role_id], references: [id])
+  role_id         String        @db.Uuid
+  read_at         DateTime? // << for AUDIENCE read status
+
+  @@unique([notification_id, role_id])
+  @@index([notification_id])
+  @@index([role_id])
+}
+
+model notification_recipients {
+  id               String                        @id @default(uuid()) @db.Uuid
+  notification     notifications                 @relation(fields: [notification_id], references: [id])
+  notification_id  String                        @db.Uuid
+  user             user                          @relation(fields: [user_id], references: [id])
+  user_id          String                        @db.Uuid
+  read_at          DateTime? // << for PERSONAL read status
+  channel_statuses notification_channel_status[]
+
+  @@index([notification_id])
+  @@index([user_id])
+}
+
+model notification_channel_status {
+  id            String                  @id @default(uuid()) @db.Uuid
+  recipient     notification_recipients @relation(fields: [recipient_id], references: [id])
+  recipient_id  String                  @db.Uuid
+  channel       channel_types
+  status        channnel_status
+  sent_at       DateTime?
+  delivered_at  DateTime?
+  failed_at     DateTime?
+  error_message Json?
+  retry_times   Int?                    @default(0)
+}
+
+enum channel_types {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+enum channnel_status {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
